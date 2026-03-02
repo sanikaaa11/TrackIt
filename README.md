@@ -36,4 +36,4 @@ The project follows a modular folder structure separating screens, models, and b
 ---
 
 This project demonstrates Firebase integration, state management, and UI structuring in a real-world mobile application scenario.
->>>>>>> b99aaa79e641e788cdbd5035876faa4fd1e5174c
+
