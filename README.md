@@ -1,16 +1,39 @@
-# trackit
 
-A new Flutter project.
+# TrackIt
 
-## Getting Started
+TrackIt is a Flutter-based productivity application designed to help users manage tasks, journaling, and expenses in one place.
 
-This project is a starting point for a Flutter application.
+## 🚀 Features
+- Task management with completion tracking
+- Mood-based journaling with optional image attachment
+- Expense tracking with real-time updates
+- Persistent onboarding flow
+- Clean modular UI architecture
 
-A few resources to get you started if this is your first Flutter project:
+## 🛠 Tech Stack
+- Flutter
+- Dart
+- Firebase Firestore
+- SharedPreferences
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## 📸 Screenshots
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### Home Screen
+![Home](screenshots/home.png)
+
+### Journal Module
+![Journal](screenshots/journal.png)
+
+### Expense Tracking
+![Expenses](screenshots/expenses.png)
+
+### Task Management
+![Tasks](screenshots/tasks.png)
+
+## 📂 Architecture
+The project follows a modular folder structure separating screens, models, and business logic to ensure scalability and maintainability.
+
+---
+
+This project demonstrates Firebase integration, state management, and UI structuring in a real-world mobile application scenario.
+>>>>>>> b99aaa79e641e788cdbd5035876faa4fd1e5174c
