@@ -1,0 +1,40 @@
+# Flutter
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+
+# Generated files
+GeneratedPluginRegistrant.java
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+
+# Android
+/android/.gradle
+/android/app/build
+/android/local.properties
+/android/captures/
+/android/.cxx
+/android/gradle-wrapper.jar
+/android/gradlew
+/android/gradlew.bat
+
+# Keystore 
+key.properties
+**/*.keystore
+**/*.jks
+
+# Firebase 
+google-services.json
+GoogleService-Info.plist
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Mac / Windows junk
+.DS_Store
+Thumbs.db
