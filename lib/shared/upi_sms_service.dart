@@ -1,3 +1,5 @@
+// ignore_for_file: dead_code
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:telephony/telephony.dart';
@@ -171,7 +173,7 @@ class UpiSmsService {
 
       final Set<String> processedKeys = {};
 
-      for (final sms in messages ?? []) {
+      for (final sms in messages) {
         final body = sms.body ?? '';
         final sender = sms.address ?? '';
 

@@ -1,21 +1,17 @@
+// ignore_for_file: unused_field
+
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../features/journal/data/journal_model.dart';
 
-// SECURITY: API key is injected at build time via --dart-define=GEMINI_KEY=...
-// Never hardcode API keys in source code.
-// Production best practice: route through a backend proxy so the key
-// is never exposed client-side. For this portfolio app, dart-define
-// is used as it keeps the key out of source control while still
-// allowing the app to function.
+
 final aiServiceProvider = Provider<AIService>((ref) {
   const apiKey = String.fromEnvironment('GEMINI_KEY', defaultValue: '');
   return AIService(apiKey);
 });
 
-// SECURITY: Input validation constants — OWASP recommends explicit
-// length limits on all user-controlled data sent to external APIs.
+
 class _InputLimits {
   static const int maxUserMessage = 500;      // chars per AI chat message
   static const int maxTaskTitle = 100;        // chars
@@ -25,14 +21,13 @@ class _InputLimits {
   static const int maxTasksPerSuggestion = 20; // tasks sent to AI
 }
 
-// SECURITY: Rate limiting — prevent accidental or malicious API spam.
-// Tracks last call time per method and enforces minimum intervals.
+
 class _RateLimiter {
   final Map<String, DateTime> _lastCalled = {};
   final Map<String, int> _callCount = {};
   final Map<String, DateTime> _windowStart = {};
 
-  // Returns true if call is allowed, false if rate limited
+
   bool check(String method, {
     Duration minInterval = const Duration(seconds: 2),
     int maxCallsPerMinute = 10,

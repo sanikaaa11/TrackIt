@@ -1,3 +1,5 @@
+// ignore_for_file: dead_code
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -268,7 +270,7 @@ class _JournalListScreenState extends ConsumerState<JournalListScreen> {
       try {
         final d = DateTime.parse(e.date);
         final x = d.day.toDouble();
-        final y = (e.moodScore ?? 5).toDouble();
+        final y = (e.moodScore).toDouble();
         spots.add(FlSpot(x, y));
       } catch (_) {}
     }

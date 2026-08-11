@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +15,7 @@ import '../../../shared/ai_service.dart';
 class _ChatInputLimits {
   static const int maxMessageLength = 500;
   static const int maxMessagesInSession = 50; // prevent memory bloat
+  // ignore: unused_field
   static const Duration sendDebounce = Duration(seconds: 2);
   static const Duration minTimeBetweenMessages = Duration(seconds: 1);
 }
