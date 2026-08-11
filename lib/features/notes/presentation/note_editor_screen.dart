@@ -20,28 +20,30 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   late final TextEditingController titleController;
   late final TextEditingController bodyController;
   late final FocusNode bodyFocus;
-  String colorLabel = '#1A1A1A';
+  String colorLabel = '#7F77DD'; // default purple (notes accent)
   Note? existingNote;
   bool isEditMode = false;
   bool _isDirty = false;
 
-  static const List<String> _colorOptions = [
-    '#1A1A1A',
-    '#1A2A3A',
-    '#1A2A1A',
-    '#2A1A2A',
-    '#2A1A1A',
-    '#2A2A1A',
+  // Vibrant colors matching the app's module palette + extra fun ones
+  static const List<Map<String, dynamic>> _colorOptions = [
+    {'hex': '#7F77DD', 'color': Color(0xFF7F77DD), 'label': 'Purple'},
+    {'hex': '#378ADD', 'color': Color(0xFF378ADD), 'label': 'Blue'},
+    {'hex': '#1D9E75', 'color': Color(0xFF1D9E75), 'label': 'Teal'},
+    {'hex': '#D85A30', 'color': Color(0xFFD85A30), 'label': 'Coral'},
+    {'hex': '#EF9F27', 'color': Color(0xFFEF9F27), 'label': 'Amber'},
+    {'hex': '#EC4899', 'color': Color(0xFFEC4899), 'label': 'Pink'},
+    {'hex': '#06B6D4', 'color': Color(0xFF06B6D4), 'label': 'Cyan'},
+    {'hex': '#22C55E', 'color': Color(0xFF22C55E), 'label': 'Green'},
   ];
 
-  static const List<Color> _colorDisplay = [
-    Color(0xFF1A1A1A),
-    Color(0xFF1A2A3A),
-    Color(0xFF1A2A1A),
-    Color(0xFF2A1A2A),
-    Color(0xFF2A1A1A),
-    Color(0xFF2A2A1A),
-  ];
+  Color get _currentColor {
+    final match = _colorOptions.firstWhere(
+      (c) => c['hex'] == colorLabel,
+      orElse: () => _colorOptions.first,
+    );
+    return match['color'] as Color;
+  }
 
   @override
   void initState() {
@@ -106,28 +108,29 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     }
 
     if (mounted) {
-      setState(() => isEditMode = false);
+      setState(() {
+        isEditMode = false;
+        _isDirty = false;
+      });
       if (widget.noteId == 'new') context.pop();
     }
   }
 
-  // Insert bullet point at cursor position
   void _insertBullet() {
     final controller = bodyController;
     final text = controller.text;
     final selection = controller.selection;
 
     if (!selection.isValid) {
-      // Just append bullet at end
       final newText = text.isEmpty ? '• ' : '$text\n• ';
       controller.value = TextEditingValue(
         text: newText,
         selection: TextSelection.collapsed(offset: newText.length),
       );
+      bodyFocus.requestFocus();
       return;
     }
 
-    // Find start of current line
     final cursorPos = selection.baseOffset;
     int lineStart = cursorPos;
     while (lineStart > 0 && text[lineStart - 1] != '\n') {
@@ -138,41 +141,52 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     final alreadyHasBullet = currentLine.startsWith('• ');
 
     if (alreadyHasBullet) {
-      // Remove bullet from current line
-      final newText = text.substring(0, lineStart) +
-          text.substring(lineStart + 2);
+      final newText =
+          text.substring(0, lineStart) + text.substring(lineStart + 2);
       final newCursor = (cursorPos - 2).clamp(0, newText.length);
       controller.value = TextEditingValue(
         text: newText,
         selection: TextSelection.collapsed(offset: newCursor),
       );
     } else {
-      // Add bullet to start of current line
       final newText = text.substring(0, lineStart) +
           '• ' +
           text.substring(lineStart);
       controller.value = TextEditingValue(
         text: newText,
-        selection:
-            TextSelection.collapsed(offset: cursorPos + 2),
+        selection: TextSelection.collapsed(offset: cursorPos + 2),
       );
     }
-
     bodyFocus.requestFocus();
   }
 
-  // Handle enter key to auto-continue bullet list
+  void _insertCheckbox() {
+    final controller = bodyController;
+    final text = controller.text;
+    final sel = controller.selection;
+    final pos = sel.isValid ? sel.baseOffset : text.length;
+    // Find line start
+    int lineStart = pos;
+    while (lineStart > 0 && text[lineStart - 1] != '\n') {
+      lineStart--;
+    }
+    final newText =
+        text.substring(0, lineStart) + '☐ ' + text.substring(lineStart);
+    controller.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: lineStart + 2),
+    );
+    bodyFocus.requestFocus();
+  }
+
   void _onBodyChanged(String value) {
     final text = bodyController.text;
     final selection = bodyController.selection;
     if (!selection.isValid) return;
-
-    // Check if user just pressed enter after a bullet line
     final cursorPos = selection.baseOffset;
     if (cursorPos < 1) return;
 
     if (text[cursorPos - 1] == '\n' && cursorPos >= 3) {
-      // Find the previous line
       int prevLineStart = cursorPos - 2;
       while (prevLineStart > 0 && text[prevLineStart - 1] != '\n') {
         prevLineStart--;
@@ -180,32 +194,70 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
       final prevLine = text.substring(prevLineStart, cursorPos - 1);
 
       if (prevLine == '• ') {
-        // Empty bullet — remove it and stop the list
-        final newText = text.substring(0, prevLineStart) +
-            text.substring(cursorPos - 1);
+        // Empty bullet — stop the list
+        final newText =
+            text.substring(0, prevLineStart) + text.substring(cursorPos - 1);
         bodyController.value = TextEditingValue(
           text: newText,
-          selection: TextSelection.collapsed(
-            offset: prevLineStart,
-          ),
+          selection: TextSelection.collapsed(offset: prevLineStart),
         );
       } else if (prevLine.startsWith('• ')) {
         // Continue bullet list
-        final newText = text.substring(0, cursorPos) +
-            '• ' +
-            text.substring(cursorPos);
+        final newText =
+            text.substring(0, cursorPos) + '• ' + text.substring(cursorPos);
         bodyController.value = TextEditingValue(
           text: newText,
-          selection: TextSelection.collapsed(
-            offset: cursorPos + 2,
-          ),
+          selection: TextSelection.collapsed(offset: cursorPos + 2),
         );
       }
     }
   }
 
+  Future<void> _confirmDelete() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Delete note?',
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
+        content: Text(
+          'This note will be permanently deleted.',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child:
+                Text('Cancel', style: TextStyle(color: AppColors.textHint)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('Delete',
+                style: TextStyle(
+                    color: AppColors.error, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      if (existingNote != null) {
+        await ref
+            .read(notesProvider.notifier)
+            .deleteNote(existingNote!.id);
+      }
+      if (mounted) context.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final accent = _currentColor;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -221,45 +273,65 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
             }
           },
         ),
+        // Accent color indicator in AppBar
+        title: Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: accent,
+            shape: BoxShape.circle,
+          ),
+        ),
+        centerTitle: true,
         actions: [
-          if (!isEditMode)
+          if (!isEditMode) ...[
             IconButton(
-              icon: Icon(
-                Icons.edit_outlined,
-                color: AppColors.notes,
-              ),
+              icon: Icon(Icons.edit_outlined, color: accent),
               onPressed: () {
                 setState(() => isEditMode = true);
-                bodyFocus.requestFocus();
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  bodyFocus.requestFocus();
+                });
               },
-            )
-          else
+            ),
+            IconButton(
+              icon: Icon(Icons.delete_outline, color: AppColors.error),
+              onPressed: _confirmDelete,
+            ),
+          ] else
             TextButton(
               onPressed: _save,
               child: Text(
                 'Done',
                 style: TextStyle(
-                  color: AppColors.notes,
+                  color: accent,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-          if (!isEditMode)
-            IconButton(
-              icon: Icon(
-                Icons.delete_outline,
-                color: AppColors.error,
-              ),
-              onPressed: () => _confirmDelete(),
-            ),
         ],
       ),
       body: Column(
         children: [
+          // Left colored border accent strip
+          Container(
+            height: 3,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [accent, accent.withOpacity(0)],
+              ),
+            ),
+          ),
+
           Expanded(
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(AppSizes.screenPadding),
+              padding: EdgeInsets.fromLTRB(
+                AppSizes.screenPadding,
+                AppSizes.md,
+                AppSizes.screenPadding,
+                AppSizes.md,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -273,11 +345,18 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             hintText: 'Title',
+                            hintStyle: TextStyle(
+                              color: AppColors.textHint,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
                           ),
                         )
                       : Text(
@@ -291,7 +370,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                           ),
                         ),
 
-                  Divider(color: AppColors.border, height: 24),
+                  SizedBox(height: AppSizes.sm),
+                  Divider(color: accent.withOpacity(0.3), thickness: 1),
+                  SizedBox(height: AppSizes.sm),
 
                   // Body
                   isEditMode
@@ -300,28 +381,36 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                           focusNode: bodyFocus,
                           textCapitalization: TextCapitalization.sentences,
                           maxLines: null,
+                          keyboardType: TextInputType.multiline,
                           style: TextStyle(
                             color: AppColors.textPrimary,
-                            fontSize: 16,
-                            height: 1.6,
+                            fontSize: 15,
+                            height: 1.7,
                           ),
                           decoration: InputDecoration(
                             hintText: 'Start writing...',
                             hintStyle: TextStyle(
                               color: AppColors.textHint,
+                              fontSize: 15,
                             ),
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
                           ),
                           onChanged: _onBodyChanged,
                         )
                       : SelectableText(
-                          bodyController.text,
+                          bodyController.text.isEmpty
+                              ? 'No content'
+                              : bodyController.text,
                           style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 16,
-                            height: 1.6,
+                            color: bodyController.text.isEmpty
+                                ? AppColors.textHint
+                                : AppColors.textSecondary,
+                            fontSize: 15,
+                            height: 1.7,
                           ),
                         ),
                 ],
@@ -331,223 +420,235 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
 
           // Toolbar — only in edit mode
           if (isEditMode)
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 8,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                border: Border(
-                  top: BorderSide(color: AppColors.border, width: 0.5),
-                ),
-              ),
-              child: Row(
-                children: [
-                  // Bold
-                  _ToolbarButton(
-                    label: 'B',
-                    bold: true,
-                    onTap: () {
-                      final sel = bodyController.selection;
-                      if (!sel.isValid || sel.isCollapsed) return;
-                      final selected = bodyController.text
-                          .substring(sel.start, sel.end);
-                      final newText =
-                          bodyController.text.substring(0, sel.start) +
-                              '**$selected**' +
-                              bodyController.text.substring(sel.end);
-                      bodyController.value = TextEditingValue(
-                        text: newText,
-                        selection: TextSelection.collapsed(
-                          offset: sel.end + 4,
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 4),
-                  // Italic
-                  _ToolbarButton(
-                    label: 'I',
-                    italic: true,
-                    onTap: () {
-                      final sel = bodyController.selection;
-                      if (!sel.isValid || sel.isCollapsed) return;
-                      final selected = bodyController.text
-                          .substring(sel.start, sel.end);
-                      final newText =
-                          bodyController.text.substring(0, sel.start) +
-                              '_${selected}_' +
-                              bodyController.text.substring(sel.end);
-                      bodyController.value = TextEditingValue(
-                        text: newText,
-                        selection: TextSelection.collapsed(
-                          offset: sel.end + 2,
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 4),
-                  // Bullet point — THE NEW BUTTON
-                  _ToolbarButton(
-                    icon: Icons.format_list_bulleted,
-                    onTap: _insertBullet,
-                    tooltip: 'Bullet point',
-                  ),
-                  const SizedBox(width: 4),
-                  // Checkbox item
-                  _ToolbarButton(
-                    icon: Icons.check_box_outline_blank,
-                    onTap: () {
-                      final controller = bodyController;
-                      final text = controller.text;
-                      final sel = controller.selection;
-                      final pos =
-                          sel.isValid ? sel.baseOffset : text.length;
-                      final newText =
-                          text.substring(0, pos) +
-                              '☐ ' +
-                              text.substring(pos);
-                      controller.value = TextEditingValue(
-                        text: newText,
-                        selection: TextSelection.collapsed(
-                          offset: pos + 2,
-                        ),
-                      );
-                      bodyFocus.requestFocus();
-                    },
-                    tooltip: 'Checkbox',
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 1,
-                    height: 24,
-                    color: AppColors.border,
-                  ),
-                  const SizedBox(width: 8),
-                  // Color dots
-                  ...List.generate(_colorOptions.length, (index) {
-                    final isSelected = colorLabel == _colorOptions[index];
-                    return GestureDetector(
-                      onTap: () => setState(
-                        () => colorLabel = _colorOptions[index],
-                      ),
-                      child: Container(
-                        width: 24,
-                        height: 24,
-                        margin: const EdgeInsets.only(right: 6),
-                        decoration: BoxDecoration(
-                          color: _colorDisplay[index],
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isSelected
-                                ? Colors.white
-                                : Colors.transparent,
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                ],
-              ),
+            _NoteToolbar(
+              accent: accent,
+              colorOptions: _colorOptions,
+              selectedHex: colorLabel,
+              onColorSelected: (hex) =>
+                  setState(() => colorLabel = hex),
+              onBullet: _insertBullet,
+              onCheckbox: _insertCheckbox,
+              onBold: () {
+                final sel = bodyController.selection;
+                if (!sel.isValid || sel.isCollapsed) return;
+                final selected = bodyController.text
+                    .substring(sel.start, sel.end);
+                final newText = bodyController.text.substring(0, sel.start) +
+                    '**$selected**' +
+                    bodyController.text.substring(sel.end);
+                bodyController.value = TextEditingValue(
+                  text: newText,
+                  selection:
+                      TextSelection.collapsed(offset: sel.end + 4),
+                );
+              },
+              onItalic: () {
+                final sel = bodyController.selection;
+                if (!sel.isValid || sel.isCollapsed) return;
+                final selected = bodyController.text
+                    .substring(sel.start, sel.end);
+                final newText = bodyController.text.substring(0, sel.start) +
+                    '_${selected}_' +
+                    bodyController.text.substring(sel.end);
+                bodyController.value = TextEditingValue(
+                  text: newText,
+                  selection:
+                      TextSelection.collapsed(offset: sel.end + 2),
+                );
+              },
             ),
         ],
       ),
     );
-  }
-
-  Future<void> _confirmDelete() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: const Text(
-          'Delete note?',
-          style: TextStyle(color: Colors.white, fontSize: 16),
-        ),
-        content: Text(
-          'This note will be permanently deleted.',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: AppColors.textHint),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(
-              'Delete',
-              style: TextStyle(
-                color: AppColors.error,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true && mounted) {
-      if (existingNote != null) {
-        await ref.read(notesProvider.notifier).deleteNote(existingNote!.id);
-      }
-      if (mounted) context.pop();
-    }
   }
 }
 
-class _ToolbarButton extends StatelessWidget {
-  const _ToolbarButton({
-    this.label,
-    this.icon,
-    required this.onTap,
-    this.bold = false,
-    this.italic = false,
-    this.tooltip,
+// Extracted toolbar widget — fixes overflow by using proper layout
+class _NoteToolbar extends StatelessWidget {
+  const _NoteToolbar({
+    required this.accent,
+    required this.colorOptions,
+    required this.selectedHex,
+    required this.onColorSelected,
+    required this.onBullet,
+    required this.onCheckbox,
+    required this.onBold,
+    required this.onItalic,
   });
 
-  final String? label;
-  final IconData? icon;
-  final VoidCallback onTap;
-  final bool bold;
-  final bool italic;
-  final String? tooltip;
+  final Color accent;
+  final List<Map<String, dynamic>> colorOptions;
+  final String selectedHex;
+  final ValueChanged<String> onColorSelected;
+  final VoidCallback onBullet;
+  final VoidCallback onCheckbox;
+  final VoidCallback onBold;
+  final VoidCallback onItalic;
 
   @override
   Widget build(BuildContext context) {
-    Widget child = icon != null
-        ? Icon(icon, color: AppColors.textSecondary, size: 18)
-        : Text(
-            label ?? '',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-              fontStyle: italic ? FontStyle.italic : FontStyle.normal,
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          top: BorderSide(color: AppColors.border, width: 0.5),
+        ),
+      ),
+      // Two-row toolbar: formatting on top, colors on bottom
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Row 1: formatting buttons
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: Row(
+              children: [
+                _ToolbarBtn(
+                  child: Text(
+                    'B',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onTap: onBold,
+                  tooltip: 'Bold (select text first)',
+                ),
+                const SizedBox(width: 4),
+                _ToolbarBtn(
+                  child: Text(
+                    'I',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 15,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  onTap: onItalic,
+                  tooltip: 'Italic (select text first)',
+                ),
+                const SizedBox(width: 4),
+                _ToolbarBtn(
+                  child: Icon(
+                    Icons.format_list_bulleted,
+                    color: AppColors.textSecondary,
+                    size: 18,
+                  ),
+                  onTap: onBullet,
+                  tooltip: 'Bullet point',
+                ),
+                const SizedBox(width: 4),
+                _ToolbarBtn(
+                  child: Icon(
+                    Icons.check_box_outline_blank,
+                    color: AppColors.textSecondary,
+                    size: 18,
+                  ),
+                  onTap: onCheckbox,
+                  tooltip: 'Checkbox',
+                ),
+                const Spacer(),
+                // Active color preview
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: accent,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  colorOptions
+                          .firstWhere(
+                            (c) => c['hex'] == selectedHex,
+                            orElse: () => colorOptions.first,
+                          )['label'] as String,
+                  style: TextStyle(
+                    color: AppColors.textHint,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
             ),
-          );
+          ),
 
+          // Row 2: color picker — horizontal scroll so no overflow
+          SizedBox(
+            height: 44,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+              children: colorOptions.map((option) {
+                final hex = option['hex'] as String;
+                final color = option['color'] as Color;
+                final label = option['label'] as String;
+                final isSelected = selectedHex == hex;
+
+                return Tooltip(
+                  message: label,
+                  child: GestureDetector(
+                    onTap: () => onColorSelected(hex),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: 28,
+                      height: 28,
+                      margin: const EdgeInsets.only(right: 10),
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected
+                              ? Colors.white
+                              : Colors.transparent,
+                          width: 2.5,
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: color.withOpacity(0.5),
+                                  blurRadius: 6,
+                                  spreadRadius: 1,
+                                ),
+                              ]
+                            : null,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToolbarBtn extends StatelessWidget {
+  const _ToolbarBtn({
+    required this.child,
+    required this.onTap,
+    this.tooltip = '',
+  });
+
+  final Widget child;
+  final VoidCallback onTap;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) {
     return Tooltip(
-      message: tooltip ?? label ?? '',
+      message: tooltip,
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 32,
-          height: 32,
+          width: 34,
+          height: 34,
           decoration: BoxDecoration(
             color: AppColors.surfaceVariant,
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(8),
           ),
           alignment: Alignment.center,
           child: child,
